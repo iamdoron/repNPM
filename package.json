@@ -10,6 +10,7 @@
   "license": "BSD-2-Clause",
   "dependencies": {
     "async": "~0.2.10",
-    "nano": "~5.7.1"
+    "nano": "~5.7.1",
+    "hoek": "~1.5.1"
   }
 }
