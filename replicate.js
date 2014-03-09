@@ -5,22 +5,49 @@ var server = nano("http://isaacs.iriscouch.com");
 var npm = server.db.use("registry");
 var localCouch = nano("http://administrator:1234@127.0.0.1:5984/")
 var localnpm = localCouch.db.use("copied_registry");
+var fs = require('fs');
+
+var debug = false;
+var errors = []
+
+var log = function(message){
+	message = new Date().toISOString() + " : " + message; 
+	if (debug) {
+		console.log(message);
+	}
+	fs.appendFile("./replication.log", message + "\n", function(){});
+}
+
+var logError = function(message){
+	message = new Date().toISOString() + " : " + message; 
+	console.error(message);
+	fs.appendFile("./replication.log.err", message + "\n", function(){});
+}
+
+log("starting replications...");
 
 var replicationQueue = Async.queue(function (task, callback) {
-    packgeName = task.packgeName;
-	options = { create_target:true, doc_ids:[packgeName], continuous: false};
+	log("replicating " + task.packgeName + " -- waiting to be processed: " + replicationQueue.length());
+	options = { create_target:true, doc_ids:[task.packgeName], continuous: false};
 	localCouch.db.replicate("http://isaacs.iriscouch.com/registry", "http://administrator:1234@127.0.0.1:5984/copied_registry", options , function(err, body) {
 		if (err || ! body.ok)
 		{
-			console.error("ERRROR! package: " + packgeName);
-			console.log(body);
+			logError("ERRROR! package: " + JSON.stringify(task.packgeName));
+			logError(body);
 		} 
-		console.log(packgeName + ".ok = " + body.ok);
+		log(task.packgeName + ".ok = " + body.ok);
     	callback(err);
 	});
-}, 2);
+}, 100);
 
-FindDeps(["traverse"], function(packgeName){
+packages = require('./replication.json').packages;
+
+FindDeps(packages, function(err, packgeName){
+	if (err) {
+		errors.push(err);
+		logError("accumulated errors: " + errors);
+		return logError("ERROR with package " + packgeName + ": " + err );
+	}
 	replicationQueue.push({packgeName: packgeName});
-	console.log(packgeName + " was found and pushed to queue");
+	log(packgeName + " pushed to queue");
 });
