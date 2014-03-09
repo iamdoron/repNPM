@@ -44,7 +44,7 @@ packages = require('./replication.json').packages;
 
 FindDeps(packages, function(err, packgeName){
 	if (err) {
-		errors.push(err);
+		errors.push(packgeName + " - " + err);
 		logError("accumulated errors: " + errors);
 		return logError("ERROR with package " + packgeName + ": " + err );
 	}
